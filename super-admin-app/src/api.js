@@ -1,4 +1,4 @@
-const BASE_URL = 'http://localhost:5000/api';
+const BASE_URL = 'https://feature-flag-system-xcqm.onrender.com/api';
 
 export const loginSuperAdmin = async (email, password) => {
   const res = await fetch(`${BASE_URL}/auth/super-admin/login`, {
