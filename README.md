@@ -25,7 +25,7 @@ A multi-tenant SaaS-like feature flag management system with three separate fron
 
 ## Tech Stack
 
-- **Backend:** Node.js, Express, SQLite (better-sqlite3)
+- **Backend:** Node.js, Express, PostgreSQL (pg)
 - **Auth:** Custom JWT implementation (bcryptjs for password hashing)
 - **Frontend:** React (Vite) — 3 separate apps
 
@@ -47,7 +47,7 @@ Three separate frontend applications each serving a different user role:
 
 ## Key Design Decisions
 
-- **SQLite over PostgreSQL** — zero setup overhead, sufficient for this scope. In production I'd swap to PostgreSQL without changing much code.
+- **PostgreSQL on Render** — persistent cloud database ensuring data consistency across devices and deployments.
 - **Role stored as column in users table** — roles are fixed (super_admin, org_admin, end_user) so a separate roles table would be unnecessary overhead.
 - **JWT with org_id in payload** — org scoping is enforced at the middleware level. Org admins can only access flags belonging to their org.
 - **No auth for end users** — end users only check flags by providing feature_key and org_id. No sensitive data is exposed.
@@ -57,10 +57,11 @@ Three separate frontend applications each serving a different user role:
 
 | Category | Grade | Notes |
 |----------|-------|-------|
-| Performance | B | SQLite is fast for this scale. No caching implemented. |
+| Performance | B | PostgreSQL handles concurrent requests well. No caching implemented. |
 | Readability & Maintainability | A | Routes are separated by concern, middleware is reusable |
 | Stability | B | Basic error handling and validation in place. Edge cases like expired tokens handled. |
 | Testability | B | 13 unit tests written covering auth, organizations, and feature flags using Jest and Supertest. |
+
 ## Running Locally
 
 ### Backend
