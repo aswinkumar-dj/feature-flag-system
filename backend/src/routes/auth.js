@@ -1,7 +1,7 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const db = require('../db/database');
+const pool = require('../db/database');
 
 const router = express.Router();
 
@@ -26,58 +26,72 @@ router.post('/super-admin/login', (req, res) => {
 });
 
 // Org Admin Signup
-router.post('/admin/signup', (req, res) => {
+router.post('/admin/signup', async (req, res) => {
   const { username, email, password, org_id } = req.body;
 
   if (!username || !email || !password || !org_id) {
     return res.status(400).json({ error: 'All fields are required' });
   }
 
-  const org = db.prepare('SELECT * FROM organizations WHERE id = ?').get(org_id);
-  if (!org) {
-    return res.status(404).json({ error: 'Organization not found' });
+  try {
+    const org = await pool.query('SELECT * FROM organizations WHERE id = $1', [org_id]);
+    if (org.rows.length === 0) {
+      return res.status(404).json({ error: 'Organization not found' });
+    }
+
+    const existingUser = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    if (existingUser.rows.length > 0) {
+      return res.status(409).json({ error: 'Email already registered' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    await pool.query(
+      `INSERT INTO users (username, email, password, role, org_id) VALUES ($1, $2, $3, 'org_admin', $4)`,
+      [username, email, hashedPassword, org_id]
+    );
+
+    res.status(201).json({ message: 'Admin registered successfully' });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
   }
-
-  const existingUser = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
-  if (existingUser) {
-    return res.status(409).json({ error: 'Email already registered' });
-  }
-
-  const hashedPassword = bcrypt.hashSync(password, 10);
-
-  db.prepare(`
-    INSERT INTO users (username, email, password, role, org_id)
-    VALUES (?, ?, ?, 'org_admin', ?)
-  `).run(username, email, hashedPassword, org_id);
-
-  res.status(201).json({ message: 'Admin registered successfully' });
 });
 
 // Org Admin Login
-router.post('/admin/login', (req, res) => {
+router.post('/admin/login', async (req, res) => {
   const { email, password } = req.body;
 
   if (!email || !password) {
     return res.status(400).json({ error: 'All fields are required' });
   }
 
-  const user = db.prepare('SELECT * FROM users WHERE email = ? AND role = ?').get(email, 'org_admin');
-  if (!user) {
-    return res.status(401).json({ error: 'Invalid credentials' });
+  try {
+    const result = await pool.query(
+      'SELECT * FROM users WHERE email = $1 AND role = $2',
+      [email, 'org_admin']
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    const user = result.rows[0];
+    const validPassword = await bcrypt.compare(password, user.password);
+
+    if (!validPassword) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    const token = jwt.sign(
+      { id: user.id, role: user.role, org_id: user.org_id },
+      process.env.JWT_SECRET,
+      { expiresIn: '1d' }
+    );
+
+    res.json({ token, org_id: user.org_id, username: user.username });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
   }
-
-  const validPassword = bcrypt.compareSync(password, user.password);
-  if (!validPassword) {
-    return res.status(401).json({ error: 'Invalid credentials' });
-  }
-
-  const token = jwt.sign(
-    { id: user.id, role: user.role, org_id: user.org_id },
-    process.env.JWT_SECRET,
-    { expiresIn: '1d' }
-  );
-
-  res.json({ token, org_id: user.org_id, username: user.username });
 });
 
 module.exports = router;

@@ -1,34 +1,39 @@
-const Database = require('better-sqlite3');
-const path = require('path');
+const { Pool } = require('pg');
 
-const db = new Database(path.join(__dirname, '../../data.db'));
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
+});
 
-db.exec(`
-  CREATE TABLE IF NOT EXISTS organizations (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL UNIQUE,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
+const initDB = async () => {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS organizations (
+      id SERIAL PRIMARY KEY,
+      name TEXT NOT NULL UNIQUE,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
 
-  CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT NOT NULL,
-    email TEXT NOT NULL UNIQUE,
-    password TEXT NOT NULL,
-    role TEXT NOT NULL,
-    org_id INTEGER,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (org_id) REFERENCES organizations(id)
-  );
+    CREATE TABLE IF NOT EXISTS users (
+      id SERIAL PRIMARY KEY,
+      username TEXT NOT NULL,
+      email TEXT NOT NULL UNIQUE,
+      password TEXT NOT NULL,
+      role TEXT NOT NULL,
+      org_id INTEGER REFERENCES organizations(id),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
 
-  CREATE TABLE IF NOT EXISTS feature_flags (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    org_id INTEGER NOT NULL,
-    feature_key TEXT NOT NULL,
-    is_enabled INTEGER DEFAULT 1,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (org_id) REFERENCES organizations(id)
-  );
-`);
+    CREATE TABLE IF NOT EXISTS feature_flags (
+      id SERIAL PRIMARY KEY,
+      org_id INTEGER NOT NULL REFERENCES organizations(id),
+      feature_key TEXT NOT NULL,
+      is_enabled BOOLEAN DEFAULT TRUE,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+  console.log('Database initialized');
+};
 
-module.exports = db;
+initDB();
+
+module.exports = pool;
