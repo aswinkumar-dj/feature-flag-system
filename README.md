@@ -27,31 +27,31 @@ A multi-tenant SaaS-like feature flag management system with three separate fron
 
 - **Backend:** Node.js, Express, PostgreSQL (pg)
 - **Auth:** Custom JWT implementation (bcryptjs for password hashing)
-- **Frontend:** React (Vite) — 3 separate apps
+- **Frontend:** React (Vite) - 3 separate apps
 
 ## Architecture
 
 Three separate frontend applications each serving a different user role:
 
-- **Super Admin App** — manages organizations
-- **Admin App** — manages feature flags per organization
-- **User App** — checks if a feature flag is enabled
+- **Super Admin App** - manages organizations
+- **Admin App** - manages feature flags per organization
+- **User App** - checks if a feature flag is enabled
 
 ## Database Schema
 
-**organizations** — id, name, created_at
+**organizations** - id, name, created_at
 
-**users** — id, username, email, password, role, org_id, created_at
+**users** - id, username, email, password, role, org_id, created_at
 
-**feature_flags** — id, org_id, feature_key, is_enabled, created_at
+**feature_flags** - id, org_id, feature_key, is_enabled, created_at
 
 ## Key Design Decisions
 
-- **PostgreSQL on Render** — persistent cloud database ensuring data consistency across devices and deployments.
-- **Role stored as column in users table** — roles are fixed (super_admin, org_admin, end_user) so a separate roles table would be unnecessary overhead.
-- **JWT with org_id in payload** — org scoping is enforced at the middleware level. Org admins can only access flags belonging to their org.
-- **No auth for end users** — end users only check flags by providing feature_key and org_id. No sensitive data is exposed.
-- **Separate frontends** — different security boundaries and independent deployment cycles for each user type.
+- **PostgreSQL on Render** - persistent cloud database ensuring data consistency across devices and deployments.
+- **Role stored as column in users table** - roles are fixed (super_admin, org_admin, end_user) so a separate roles table would be unnecessary overhead.
+- **JWT with org_id in payload** - org scoping is enforced at the middleware level. Org admins can only access flags belonging to their org.
+- **No auth for end users** - end users only check flags by providing feature_key and org_id. No sensitive data is exposed.
+- **Separate frontends** - different security boundaries and independent deployment cycles for each user type.
 
 ## Self Grade
 
